@@ -43,3 +43,7 @@ config.py
 # Misc
 *.swp
 *.swo
+
+java_script/
+
+tests_dump/
