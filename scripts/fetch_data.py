@@ -1,5 +1,5 @@
 import requests
-from config import API_KEY
+from config.config import API_KEY
 
 def fetch_data(stock_name):
     url = f"https://stock.indianapi.in/historical_stats?stock_name={stock_name}&stats=all"
