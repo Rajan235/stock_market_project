@@ -1,5 +1,5 @@
 from db.db_utils import get_connection
-from scripts.strategies.strategy_1 import generate_signal
+from src.strategies.growth_and_roce import generate_signal
 
 def run_strategy(company_id):
     conn = get_connection()
