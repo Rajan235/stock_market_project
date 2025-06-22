@@ -47,7 +47,7 @@ public class App
             {"COALINDIA", "6595259"},
             {"DRREDDY", "6595620"},
             {"EICHERMOT", "6595636"},
-            {"ETERNAL","68088707"}
+            {"ETERNAL","68088707"},
             {"GRASIM", "6596053"},
             {"HCLTECH", "6596236"},
             {"HDFCBANK", "6596237"},
@@ -82,7 +82,6 @@ public class App
             {"TECHM", "6599866"},
             {"TITAN", "6599273"},
             {"ULTRACEMCO", "6599447"},
-
             {"WIPRO", "6599824"}
         };
 
