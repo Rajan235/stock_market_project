@@ -3,6 +3,7 @@ import pandas as pd
 from db.db_utils import get_connection
 from sqlalchemy import create_engine, text
 from datetime import datetime
+import json
 
 ##need to cange for all companies in db
 
@@ -10,13 +11,13 @@ from datetime import datetime
 conn = get_connection()
 engine = create_engine("postgresql+psycopg2://", creator=lambda: conn)
 
-# Load companies
-# companies = pd.read_sql("""
-#     SELECT company_id, company_name, company_code 
-#     FROM companies 
-#     WHERE company_code IS NOT NULL
-# """, conn)
-companies = [{"company_code": "ADANIPORTS", "screener_id": "6594426", "excel_file": "Adani Ports.xlsx"}]
+# Load companies from DB
+
+companies = pd.read_sql("""
+    SELECT company_id, company_code
+    FROM companies
+    WHERE company_code IS NOT NULL
+""", conn).to_dict(orient="records")
 
 # Helper function to insert latest price
 def insert_latest_price(symbol, company_id):
@@ -170,7 +171,7 @@ def insert_historical_prices(symbol, company_id, start="2010-01-01"):
 #             print(f"❌ Error fetching financials for {symbol}: {e}")
 
 # Example input list of companies
-
+#helper function to insert yfinance statement data into the database
 def insert_yfinance_statement(df, company_id, period_type, table_name):
     if df is None or df.empty:
         return
@@ -181,10 +182,11 @@ def insert_yfinance_statement(df, company_id, period_type, table_name):
                 if pd.isnull(value):
                     continue
                 # Try to find period_id from financial_periods
-                period_end_date = pd.to_datetime(period_end).date()
+                period_end_date = pd.to_datetime(period_end)
+                period_name = period_end_date.strftime('Mar %Y')
                 period_id = conn.execute(
-                    text("SELECT period_id FROM financial_periods WHERE period_name = :period_name"),
-                    {"period_name": str(period_end_date)}
+                    text("SELECT period_id FROM financial_periods WHERE period_name = :period_name AND period_type = :period_type"),
+                    {"period_name": period_name, "period_type": period_type}
                 ).scalar()
                 if not period_id:
                     # Optionally, insert new period if not found
@@ -205,6 +207,75 @@ def insert_yfinance_statement(df, company_id, period_type, table_name):
                     }
                 )
 
+def insert_yfinance_statement_jsonb(df, company_id, period_type, table_name):
+    if df is None or df.empty:
+        return
+    # df: index = field_name, columns = period_end (datetime or string)
+    df = df.transpose()  # Now rows = period_end, columns = field_name
+    for period_end, row in df.iterrows():
+        period_end_date = pd.to_datetime(period_end)
+        period_name = period_end_date.strftime('Mar %Y')
+        with engine.begin() as conn:
+            period_id = conn.execute(
+                text("SELECT period_id FROM financial_periods WHERE period_name = :period_name AND period_type = :period_type"),
+                {"period_name": period_name, "period_type": period_type}
+            ).scalar()
+            if not period_id:
+                continue
+            # Convert row to dict, drop nulls, and use original field names
+            data = {str(col): row[col] for col in row.index if pd.notnull(row[col])}
+            conn.execute(
+                text(f"""
+                    INSERT INTO {table_name} (company_id, period_id, period_type, data)
+                    VALUES (:company_id, :period_id, :period_type, :data)
+                    ON CONFLICT (company_id, period_id, period_type)
+                    DO UPDATE SET data = EXCLUDED.data, created_at = CURRENT_TIMESTAMP
+                """),
+                {
+                    "company_id": company_id,
+                    "period_id": period_id,
+                    "period_type": period_type,
+                    "data": json.dumps(data)
+                }
+            )
+def insert_yfinance_statement_wide(df, company_id, period_type, table_name):
+    if df is None or df.empty:
+        return
+    # df: index = field_name, columns = period_end (datetime or string)
+    df = df.transpose()  # Now rows = period_end, columns = field_name
+    for period_end, row in df.iterrows():
+        period_end_date = pd.to_datetime(period_end)
+        period_name = period_end_date.strftime('Mar %Y')
+        with engine.begin() as conn:
+            period_id = conn.execute(
+                text("SELECT period_id FROM financial_periods WHERE period_name = :period_name AND period_type = :period_type"),
+                {"period_name": period_name, "period_type": period_type}
+            ).scalar()
+            if not period_id:
+                continue
+            # Prepare the insert/update dict
+            record = {
+                "company_id": company_id,
+                "period_id": period_id,
+                "period_type": period_type,
+            }
+            # Only include columns that exist in your table
+            for col in row.index:
+                # Convert to snake_case to match your SQL column names
+                col_sql = col.lower().replace(" ", "_").replace("-", "_").replace("&", "and")
+                record[col_sql] = row[col] if pd.notnull(row[col]) else None
+            # Build the SQL dynamically
+            columns = ', '.join(record.keys())
+            values = ', '.join([f':{k}' for k in record.keys()])
+            updates = ', '.join([f'{k} = EXCLUDED.{k}' for k in record.keys() if k not in ['company_id', 'period_id', 'period_type']])
+            sql = f"""
+                INSERT INTO {table_name} ({columns})
+                VALUES ({values})
+                ON CONFLICT (company_id, period_id, period_type)
+                DO UPDATE SET {updates}
+            """
+            conn.execute(text(sql), record)
+#helper function to insert yfinance company info into the database
 def insert_yfinance_company_info(info, company_id):
     with engine.begin() as conn:
         conn.execute(
@@ -225,7 +296,7 @@ def insert_yfinance_company_info(info, company_id):
                 "website": info.get("website"),
             }
         )
-
+#function to fetch and insert financials from yfinance for all companies
 def financials_yfinance(companies):
     for row in companies:
         symbol = row['company_code'] + ".NS"
@@ -234,43 +305,64 @@ def financials_yfinance(companies):
         try:
             ticker = yf.Ticker(symbol)
             # Lookup company_id from your companies table
-            company_id = engine.execute(
-                text("SELECT company_id FROM companies WHERE company_code = :code"),
-                {"code": row['company_code']}
-            ).scalar()
-            if not company_id:
-                print(f"❌ Company {row['company_code']} not found in DB.")
-                continue
+            company_id = row['company_id']  
+            # with engine.begin() as conn:
+            #     company_id = conn.execute(
+            #         text("SELECT company_id FROM companies WHERE company_code = :code"),
+            #         {"code": row['company_code']}
+            #     ).scalar()
+            # if not company_id:
+            #     print(f"❌ Company {row['company_code']} not found in DB.")
+            #     continue
 
             # Basic Info
             info = ticker.info
             insert_yfinance_company_info(info, company_id)
 
             # Income Statements
-            insert_yfinance_statement(ticker.financials, company_id, "annual", "yfinance_income_statement")
-            insert_yfinance_statement(ticker.quarterly_financials, company_id, "quarterly", "yfinance_income_statement")
+            insert_yfinance_statement_jsonb(ticker.financials, company_id, "annual", "yfinance_income_statement")
+            insert_yfinance_statement_jsonb(ticker.quarterly_financials, company_id, "quarterly", "yfinance_income_statement")
             ttm_income = getattr(ticker, "ttm_income_stmt", None)
             if isinstance(ttm_income, pd.DataFrame):
-                insert_yfinance_statement(ttm_income, company_id, "ttm", "yfinance_income_statement")
+                insert_yfinance_statement_jsonb(ttm_income, company_id, "ttm", "yfinance_income_statement")
 
             # Balance Sheets
-            insert_yfinance_statement(ticker.balance_sheet, company_id, "annual", "yfinance_balance_sheet")
+            insert_yfinance_statement_jsonb(ticker.balance_sheet, company_id, "annual", "yfinance_balance_sheet")
             #insert_yfinance_statement(ticker.quarterly_balance_sheet, company_id, "quarterly", "yfinance_balance_sheet")
             ttm_balance = getattr(ticker, "ttm_balance_sheet", None)
             if isinstance(ttm_balance, pd.DataFrame):
-                insert_yfinance_statement(ttm_balance, company_id, "ttm", "yfinance_balance_sheet")
+                insert_yfinance_statement_jsonb(ttm_balance, company_id, "ttm", "yfinance_balance_sheet")
 
             # Cash Flows
-            insert_yfinance_statement(ticker.cashflow, company_id, "annual", "yfinance_cash_flow")
-            insert_yfinance_statement(ticker.quarterly_cashflow, company_id, "quarterly", "yfinance_cash_flow")
+            insert_yfinance_statement_jsonb(ticker.cashflow, company_id, "annual", "yfinance_cash_flow")
+            insert_yfinance_statement_jsonb(ticker.quarterly_cashflow, company_id, "quarterly", "yfinance_cash_flow")
             ttm_cashflow = getattr(ticker, "ttm_cashflow", None)
             if isinstance(ttm_cashflow, pd.DataFrame):
-                insert_yfinance_statement(ttm_cashflow, company_id, "ttm", "yfinance_cash_flow")
+                insert_yfinance_statement_jsonb(ttm_cashflow, company_id, "ttm", "yfinance_cash_flow")
 
             print(f"✅ yfinance data inserted for {symbol}")
 
         except Exception as e:
             print(f"❌ Error fetching financials for {symbol}: {e}")
 
-financials_yfinance(companies)
+
 # Run the function
+for row in companies:
+    symbol = row['company_code'] + ".NS"
+    company_id = row['company_id']
+    print(f"Processing {symbol} (ID: {company_id})")
+    insert_latest_price(symbol, company_id)
+    insert_historical_prices(symbol, company_id,"2010-01-01")
+financials_yfinance(companies)
+
+# Filter for company_id = 1
+# company = next((row for row in companies if row['company_id'] == 8), None)
+# if company:
+#     symbol = company['company_code'] + ".NS"
+#     company_id = company['company_id']
+#     print(f"Processing {symbol} (ID: {company_id})")
+#     insert_latest_price(symbol, company_id)
+#     insert_historical_prices(symbol, company_id, "2010-01-01")
+#     financials_yfinance([company])
+# else:
+#     print("Company with company_id=1 not found.")
