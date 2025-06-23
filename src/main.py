@@ -101,7 +101,7 @@
 #     print("All data inserted successfully.")
 
 from src.etl.excel_parser import parse_financial_excel
-from src.etl.db_inserter_excel_data import (insert_annual_results,insert_balance_sheet,insert_cash_flow,insert_quarterly_results)
+from src.etl.db_inserter_excel_data import (insert_annual_results,insert_balance_sheet,insert_cash_flow,insert_quarterly_results,insert_financial_ratios,insert_performance_metrics)
 import psycopg2
 from db.db_utils import get_connection
 from sqlalchemy import create_engine
@@ -122,7 +122,7 @@ engine = create_engine("postgresql+psycopg2://", creator=lambda: conn)
 
 
 for company in companies:
-    excel_file = company.get("excel_file")
+    excel_file = company["excel_file"]
     company_name = os.path.splitext(excel_file)[0] if excel_file else company["company_code"]
     company_code = company["company_code"]
 
@@ -143,12 +143,16 @@ for company in companies:
     company_id = cur.fetchone()[0]
 
     file_path = os.path.join("data/downloads", excel_file)
+    print(f"Parsing financial data from {file_path} ...")
     all_sections = parse_financial_excel(file_path)
+    #print(all_sections)
 
     insert_annual_results(all_sections, cur, company_id)
     insert_balance_sheet(all_sections, cur, company_id)
     insert_cash_flow(all_sections, cur, company_id)
     insert_quarterly_results(all_sections, cur, company_id)
+    insert_financial_ratios(all_sections, cur, company_id)
+    insert_performance_metrics(all_sections, cur, company_id)
     conn.commit()
 
 cur.close()

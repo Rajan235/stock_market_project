@@ -58,17 +58,17 @@ companies = [
     {"company_code": "ADANIPORTS", "screener_id": "6594426", "excel_file": "Adani Ports.xlsx"},
     {"company_code": "ASIANPAINT", "screener_id": "6594812", "excel_file": "Asian Paints.xlsx"},
     {"company_code": "AXISBANK", "screener_id": "6594837", "excel_file": "Axis Bank.xlsx"},
-    {"company_code": "ADANIENT", "screener_id": "6594425", "excel_file": None},
-    {"company_code": "APOLLOHOSP", "screener_id": "6594634", "excel_file": None},
+    {"company_code": "ADANIENT", "screener_id": "6594425", "excel_file": "Adani Enterp.xlsx"},
+    {"company_code": "APOLLOHOSP", "screener_id": "6594634", "excel_file": "Apollo Hospitals.xlsx"},
     {"company_code": "BAJAJ-AUTO", "screener_id": "6594849", "excel_file": "Bajaj Auto.xlsx"},
     {"company_code": "BAJFINANCE", "screener_id": "6594851", "excel_file": "Bajaj Finance.xlsx"},
-    {"company_code": "BEL", "screener_id": "6595017", "excel_file": None},
+    {"company_code": "BEL", "screener_id": "6595017", "excel_file": "Bharat Electron.xlsx"},
     {"company_code": "BHARTIARTL", "screener_id": "6595023", "excel_file": "Bharti Airtel.xlsx"},
     {"company_code": "CIPLA", "screener_id": "6595253", "excel_file": "Cipla.xlsx"},
     {"company_code": "COALINDIA", "screener_id": "6595259", "excel_file": "Coal India.xlsx"},
     {"company_code": "DRREDDY", "screener_id": "6595620", "excel_file": "Dr Reddy's Labs.xlsx"},
     {"company_code": "EICHERMOT", "screener_id": "6595636", "excel_file": "Eicher Motors.xlsx"},
-    {"company_code": "ETERNAL", "screener_id": "68088707", "excel_file": None},
+    {"company_code": "ETERNAL", "screener_id": "68088707", "excel_file": "Eternal Ltd.xlsx"},
     {"company_code": "GRASIM", "screener_id": "6596053", "excel_file": "Grasim Inds.xlsx"},
     {"company_code": "HCLTECH", "screener_id": "6596236", "excel_file": "HCL Technologies.xlsx"},
     {"company_code": "HDFCBANK", "screener_id": "6596237", "excel_file": "HDFC Bank.xlsx"},
@@ -81,7 +81,7 @@ companies = [
     {"company_code": "INFY", "screener_id": "6596470", "excel_file": "Infosys.xlsx"},
     {"company_code": "ITC", "screener_id": "6596626", "excel_file": "ITC.xlsx"},
     {"company_code": "JSWSTEEL", "screener_id": "6596816", "excel_file": "JSW Steel.xlsx"},
-    {"company_code": "JIOFIN", "screener_id": "106186007", "excel_file": None},
+    {"company_code": "JIOFIN", "screener_id": "106186007", "excel_file": "Jio Financial.xlsx"},
     {"company_code": "KOTAKBANK", "screener_id": "6597025", "excel_file": "Kotak Mah. Bank.xlsx"},
     {"company_code": "LT", "screener_id": "6597052", "excel_file": "Larsen & Toubro.xlsx"},
     {"company_code": "M&M", "screener_id": "6597229", "excel_file": "M & M.xlsx"},
@@ -91,20 +91,24 @@ companies = [
     {"company_code": "ONGC", "screener_id": "6597668", "excel_file": "O N G C.xlsx"},
     {"company_code": "POWERGRID", "screener_id": "6598025", "excel_file": "Power Grid Corpn.xlsx"},
     {"company_code": "RELIANCE", "screener_id": "6598251", "excel_file": "Reliance Industr.xlsx"},
-    {"company_code": "SBILIFE", "screener_id": "17087873", "excel_file": None},
-    {"company_code": "SHRIRAMFIN", "screener_id": "6598665", "excel_file": None},
+    {"company_code": "SBILIFE", "screener_id": "17087873", "excel_file": "SBI Life Insuran.xlsx"},
+    {"company_code": "SHRIRAMFIN", "screener_id": "6598665", "excel_file": "Shriram Finance.xlsx"},
     {"company_code": "SBIN", "screener_id": "6598877", "excel_file": "St Bk of India.xlsx"},
     {"company_code": "SUNPHARMA", "screener_id": "6599038", "excel_file": "Sun Pharma.Inds.xlsx"},
     {"company_code": "TATACONSUM", "screener_id": "6599232", "excel_file": "Tata Consumer.xlsx"},
     {"company_code": "TATAMOTORS", "screener_id": "6599235", "excel_file": "Tata Motors.xlsx"},
     {"company_code": "TATASTEEL", "screener_id": "6599238", "excel_file": "Tata Steel.xlsx"},
-    {"company_code": "TRENT", "screener_id": "6599419", "excel_file": None},
+    {"company_code": "TRENT", "screener_id": "6599419", "excel_file": "Trent.xlsx"},
     {"company_code": "TCS", "screener_id": "6599230", "excel_file": "TCS.xlsx"},
     {"company_code": "TECHM", "screener_id": "6599866", "excel_file": "Tech Mahindra.xlsx"},
     {"company_code": "TITAN", "screener_id": "6599273", "excel_file": "Titan Company.xlsx"},
     {"company_code": "ULTRACEMCO", "screener_id": "6599447", "excel_file": "UltraTech Cem.xlsx"},
     {"company_code": "WIPRO", "screener_id": "6599824", "excel_file": "Wipro.xlsx"}
 ]
+
+# companies = [
+#      {"company_code": "ADANIPORTS", "screener_id": "6594426", "excel_file": "Adani Ports.xlsx"},
+# ]
 
 # def add_excel_filenames(companies, downloads_dir=DOWNLOADS_DIR):
 #     files = os.listdir(downloads_dir)

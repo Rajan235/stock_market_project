@@ -1,3 +1,4 @@
+import pandas as pd
 def safe_val(val):
     import math
     if val is None:
@@ -19,6 +20,11 @@ def insert_annual_results(all_sections, conn, company_id):
 
     for _, row in annual_df.iterrows():
         year = row['year']
+        try:
+            pd.to_datetime(year)  # Ensure year is a valid date
+        except Exception:
+            print(f"Skipping invalid year: {year}")
+            continue
         conn.execute("SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'", (year,))
         period = conn.fetchone()
         if not period:
@@ -101,6 +107,11 @@ def insert_cash_flow(all_sections, conn, company_id):
 
     for _, row in cash_df.iterrows():
         year = row['year']
+        try:
+            pd.to_datetime(year)  # Ensure year is a valid date
+        except Exception:
+            print(f"Skipping invalid year: {year}")
+            continue
         conn.execute(
             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'",
             (year,)
@@ -127,18 +138,23 @@ def insert_cash_flow(all_sections, conn, company_id):
 # ----------------- Balance Sheet -----------------
 
 #done 
-def insert_balance_sheet(all_sections, conn, company_id):
+def insert_balance_sheet(all_sections, cur, company_id):
     bs_df = all_sections.get("Balance Sheet")
     if bs_df is None:
         return
 
     for _, row in bs_df.iterrows():
         year = row['year']
-        conn.execute(
+        try:
+            pd.to_datetime(year)  # Ensure year is a valid date
+        except Exception:
+            print(f"Skipping invalid year: {year}")
+            continue
+        cur.execute(
             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'",
             (year,)
         )
-        period=conn.fetchone()
+        period=cur.fetchone()
         if not period:
             continue
         period_id = period[0]
@@ -147,21 +163,28 @@ def insert_balance_sheet(all_sections, conn, company_id):
         reserves = safe_val(row.get("Reserves"))
         borrowings = safe_val(row.get("Borrowings"))
         liabilities = safe_val(row.get("Other Liabilities"))
-        total_liab = safe_val(row.get("Total"))
+        #total_liab = safe_val(row.get("Total"))
         net_block = safe_val(row.get("Net Block"))
-        cwip = safe_val(row.get("CWIP"))
+        cwip = safe_val(row.get("Capital Work in Progress"))
         invest = safe_val(row.get("Investments"))
         other_assets = safe_val(row.get("Other Assets"))
-        total_assets = safe_val(row.get("Total"))
+       # total_assets = safe_val(row.get("Total"))
         receivables = safe_val(row.get("Receivables"))
         inventory = safe_val(row.get("Inventory"))
         cashAndBank = safe_val(row.get("Cash & Bank"))
         Num_of_Equity_Shares = safe_val(row.get("No. of Equity Shares"))
         New_Bonus_Shares = safe_val(row.get("New Bonus Shares"))
         Face_value = safe_val(row.get("Face value"))
+        totals = row.get("Total")
+        if isinstance(totals, pd.Series):
+            total_liab = safe_val(totals.iloc[0])   # First "Total"
+            total_assets = safe_val(totals.iloc[1]) # Second "Total"
+        else:
+            total_liab = total_assets = safe_val(totals)
 
-
-        conn.execute("""
+       # print("DEBUG types:", [type(x) for x in [company_id, period_id, equity, reserves, borrowings, liabilities,
+        #                                 total_liab, net_block, cwip, invest, other_assets, total_assets]])
+        cur.execute("""
             INSERT INTO balance_sheet (
                 company_id, period_id, equity_capital, reserves, borrowings,
                 other_liabilities, total_liabilities, fixed_assets, cwip,
@@ -182,6 +205,11 @@ def insert_quarterly_results(all_sections, conn, company_id):
 
     for _, row in q_df.iterrows():
         year = row['year']
+        try:
+            pd.to_datetime(year)  # Ensure year is a valid date
+        except Exception:
+            print(f"Skipping invalid year: {year}")
+            continue
         conn.execute(
             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'quarterly'",
             (year,)
@@ -202,6 +230,7 @@ def insert_quarterly_results(all_sections, conn, company_id):
         np = safe_val(row.get("Net Profit"))
         opm_percentage = (op / sales * 100) if op and sales else None
         tax_percentage = (tax / pbt) * 100 if tax and pbt else None
+
         #eps=need to be calculated 
 
         conn.execute("""
@@ -218,82 +247,282 @@ def insert_quarterly_results(all_sections, conn, company_id):
         ))
 
 # ----------------- Financial Ratios -----------------
+# def insert_financial_ratios(all_sections, conn, company_id):
+#     # Prepare annual_results and balance_sheet as dicts by period_id
+#     annual_df = all_sections.get("Profit & Loss")
+#     bs_df = all_sections.get("Balance Sheet")
+#     if annual_df is None or bs_df is None:
+#         return
+    
+#     # Build period_id lookup
+#     period_ids = {}
+#     for _, row in annual_df.iterrows():
+#         year = row['year']
+#         period = conn.execute(
+#             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'",
+#             (year,)
+#         ).fetchone()
+#         if period:
+#             period_ids[year] = period[0]
+
+#     # Build dicts for quick access
+#     annual_map = {row['year']: row for _, row in annual_df.iterrows()}
+#     bs_map = {row['year']: row for _, row in bs_df.iterrows()}
+
+#     for year, period_id in period_ids.items():
+#         annual_result = annual_map.get(year, {})
+#         balance_sheet = bs_map.get(year, {})
+
+#         sales = safe_val(annual_result.get('Sales'))
+#         receivables = safe_val(balance_sheet.get('Receivables'))
+#         inventory = safe_val(balance_sheet.get('Inventory'))
+#        # payables = safe_val(balance_sheet.get('Payables'))
+#         total_assets = safe_val(balance_sheet.get('Total'))
+#         #current_assets = safe_val(balance_sheet.get('Current Assets'))
+#         #current_liabilities = safe_val(balance_sheet.get('Current Liabilities'))
+#         operating_profit = safe_val(annual_result.get('Operating Profit'))
+#         other_income = safe_val(annual_result.get('Other Income'))
+#         net_profit = annual_result.get('net_profit')
+#         interest = annual_result.get('interest')
+#         tax = annual_result.get('tax')
+
+#         # Debtor Days
+#         debtor_days = (receivables / sales) * 365 if receivables and sales else None
+#         # Inventory Days
+#         inventory_days = (inventory / sales) * 365 if inventory and sales else None
+#         # Days Payable
+#         #days_payable = (payables / sales) * 365 if payables and sales else None
+#         # Working Capital Days
+#         #working_capital = (current_assets - current_liabilities) if current_assets and current_liabilities else None
+#         #working_capital_days = round((working_capital / sales) * 365, 2) if working_capital and sales else None
+#         # Cash Conversion Cycle
+#         #cash_conversion_cycle = (debtor_days or 0) + (inventory_days or 0) - (days_payable or 0) if debtor_days is not None and inventory_days is not None and days_payable is not None else None
+#         # ROCE
+#         EBIT = (operating_profit or 0) + (other_income or 0)
+#         #capital_employed = (total_assets - current_liabilities) if total_assets and current_liabilities else None
+#         #roce = round((EBIT / capital_employed) * 100, 2) if EBIT and capital_employed else None
+
+#         # conn.execute("""
+#         #     INSERT INTO financial_ratios (
+#         #         company_id, period_id, debtor_days, inventory_days, days_payable,
+#         #         cash_conversion_cycle, working_capital_days, roce_percentage
+#         #     )
+#         #     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+#         #     ON CONFLICT (company_id, period_id) DO NOTHING
+#         # """, (
+#         #     company_id, period_id, debtor_days, inventory_days
+#         # ))
+#     for i, (year, period_id) in enumerate(sorted(period_ids.items())):
+#         annual_result = annual_map.get(year, {})
+#         balance_sheet = bs_map.get(year, {})
+
+#         # Get previous year for average capital employed
+#         prev_year = sorted(period_ids.keys())[i-1] if i > 0 else None
+#         prev_bs = bs_map.get(prev_year, {}) if prev_year else {}
+
+#         # Numerator
+#         pbt = safe_val(annual_result.get('Profit before tax'))
+#         interest = safe_val(annual_result.get('Interest'))
+#         numerator = (pbt or 0) + (interest or 0)
+#         numerator = numerator * 2  # as per your formula
+
+#         # Denominator: average capital employed
+#         equity_now = safe_val(balance_sheet.get('Equity Share Capital'))
+#         reserves_now = safe_val(balance_sheet.get('Reserves'))
+#         borrowings_now = safe_val(balance_sheet.get('Borrowings'))
+
+#         equity_prev = safe_val(prev_bs.get('Equity Share Capital')) if prev_bs else None
+#         reserves_prev = safe_val(prev_bs.get('Reserves')) if prev_bs else None
+#         borrowings_prev = safe_val(prev_bs.get('Borrowings')) if prev_bs else None
+
+#         cap_now = (equity_now or 0) + (reserves_now or 0) + (borrowings_now or 0)
+#         cap_prev = (equity_prev or 0) + (reserves_prev or 0) + (borrowings_prev or 0)
+#         denominator = (cap_now + cap_prev) / 2 if prev_bs else cap_now
+
+#         roce = round((numerator / denominator) * 100, 2) if denominator else None
+
+#         # ... your existing code for other ratios ...
+
+#         conn.execute("""
+#             INSERT INTO financial_ratios (
+#                 company_id, period_id, debtor_days, inventory_days, 
+#                  roce_percentage
+#             )
+#             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+#             ON CONFLICT (company_id, period_id) DO NOTHING
+#         """, (
+#             company_id, period_id, debtor_days, inventory_days, roce
+#         ))
+
 def insert_financial_ratios(all_sections, conn, company_id):
-    # Prepare annual_results and balance_sheet as dicts by period_id
     annual_df = all_sections.get("Profit & Loss")
     bs_df = all_sections.get("Balance Sheet")
     if annual_df is None or bs_df is None:
         return
-    
+
     # Build period_id lookup
     period_ids = {}
     for _, row in annual_df.iterrows():
         year = row['year']
-        period = conn.execute(
+
+        try:
+            pd.to_datetime(year)  # Ensure year is a valid date
+        except Exception:
+            print(f"Skipping invalid year: {year}")
+            continue
+        conn.execute(
             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'",
             (year,)
-        ).fetchone()
+        )
+        period=conn.fetchone()
         if period:
             period_ids[year] = period[0]
 
-    # Build dicts for quick access
     annual_map = {row['year']: row for _, row in annual_df.iterrows()}
     bs_map = {row['year']: row for _, row in bs_df.iterrows()}
+    sorted_years = sorted(period_ids.keys())
 
-    for year, period_id in period_ids.items():
+    for i, year in enumerate(sorted_years):
+        period_id = period_ids[year]
         annual_result = annual_map.get(year, {})
         balance_sheet = bs_map.get(year, {})
 
+        # Get previous year for average capital employed
+        prev_year = sorted_years[i-1] if i > 0 else None
+        prev_bs = bs_map.get(prev_year) if prev_year else None 
+
+        # Calculate all ratios
         sales = safe_val(annual_result.get('Sales'))
         receivables = safe_val(balance_sheet.get('Receivables'))
         inventory = safe_val(balance_sheet.get('Inventory'))
-        payables = safe_val(balance_sheet.get('Payables'))
-        total_assets = safe_val(balance_sheet.get('Total'))
-        current_assets = safe_val(balance_sheet.get('Current Assets'))
-        current_liabilities = safe_val(balance_sheet.get('Current Liabilities'))
-        operating_profit = safe_val(annual_result.get('Operating Profit'))
-        other_income = safe_val(annual_result.get('Other Income'))
-        net_profit = annual_result.get('net_profit')
-        interest = annual_result.get('interest')
-        tax = annual_result.get('tax')
+        #payables = safe_val(balance_sheet.get('Payables'))
+       # current_assets = safe_val(balance_sheet.get('Current Assets'))
+        #current_liabilities = safe_val(balance_sheet.get('Current Liabilities'))
 
-        # Debtor Days
-        debtor_days = round((receivables / sales) * 365, 2) if receivables and sales else None
-        # Inventory Days
-        inventory_days = round((inventory / sales) * 365, 2) if inventory and sales else None
-        # Days Payable
-        days_payable = round((payables / sales) * 365, 2) if payables and sales else None
-        # Working Capital Days
-        working_capital = (current_assets - current_liabilities) if current_assets and current_liabilities else None
-        working_capital_days = round((working_capital / sales) * 365, 2) if working_capital and sales else None
-        # Cash Conversion Cycle
-        cash_conversion_cycle = (debtor_days or 0) + (inventory_days or 0) - (days_payable or 0) if debtor_days is not None and inventory_days is not None and days_payable is not None else None
-        # ROCE
-        EBIT = (operating_profit or 0) + (other_income or 0)
-        capital_employed = (total_assets - current_liabilities) if total_assets and current_liabilities else None
-        roce = round((EBIT / capital_employed) * 100, 2) if EBIT and capital_employed else None
+        debtor_days = (receivables / sales) * 365 if receivables and sales else None
+        inventory_days = (inventory / sales) * 365 if inventory and sales else None
+        #days_payable = (payables / sales) * 365 if payables and sales else None
+        #working_capital = (current_assets - current_liabilities) if current_assets and current_liabilities else None
+        #working_capital_days = (working_capital / sales) * 365 if working_capital and sales else None
+        #cash_conversion_cycle = (debtor_days or 0) + (inventory_days or 0) - (days_payable or 0) \
+         #   if debtor_days is not None and inventory_days is not None and days_payable is not None else None
 
+        # ROCE calculation
+        pbt = safe_val(annual_result.get('Profit before tax'))
+        interest = safe_val(annual_result.get('Interest'))
+        numerator = (pbt or 0) + (interest or 0)
+        numerator = numerator * 2
+        equity_now = safe_val(balance_sheet.get('Equity Share Capital'))
+        reserves_now = safe_val(balance_sheet.get('Reserves'))
+        borrowings_now = safe_val(balance_sheet.get('Borrowings'))
+        # equity_prev = safe_val(prev_bs.get('Equity Share Capital')) if prev_bs else None
+        # reserves_prev = safe_val(prev_bs.get('Reserves')) if prev_bs else None
+        # borrowings_prev = safe_val(prev_bs.get('Borrowings')) if prev_bs else None
+        # Fix the boolean check for prev_bs
+        if prev_bs is not None:
+            equity_prev = safe_val(prev_bs.get('Equity Share Capital'))
+            reserves_prev = safe_val(prev_bs.get('Reserves'))
+            borrowings_prev = safe_val(prev_bs.get('Borrowings'))
+        else:
+            equity_prev = None
+            reserves_prev = None
+            borrowings_prev = None
+        cap_now = (equity_now or 0) + (reserves_now or 0) + (borrowings_now or 0)
+        cap_prev = (equity_prev or 0) + (reserves_prev or 0) + (borrowings_prev or 0)
+        denominator = (cap_now + cap_prev) / 2 if prev_bs is not None else cap_now
+        roce = round((numerator / denominator) * 100, 2) if denominator else None
+        
+
+        # Insert all ratios in one go
         conn.execute("""
             INSERT INTO financial_ratios (
-                company_id, period_id, debtor_days, inventory_days, days_payable,
-                cash_conversion_cycle, working_capital_days, roce_percentage
+                company_id, period_id, debtor_days, inventory_days
+                , roce_percentage
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT (company_id, period_id) DO NOTHING
         """, (
-            company_id, period_id, debtor_days, inventory_days, days_payable,
-            cash_conversion_cycle, working_capital_days, roce
+            company_id, period_id, debtor_days, inventory_days
+            , roce
         ))
     
 # ----------------- Performance Metrics -----------------
 def calculate_cagr(start_value, end_value, years):
-    if start_value is None or end_value is None or start_value == 0 or years <= 0:
+    if (
+        start_value is None or end_value is None or years is None or
+        start_value <= 0 or end_value <= 0 or years <= 0
+    ):
         return None
-    return round(((end_value / start_value) ** (1 / years) - 1) * 100, 2)
+    try:
+        result = ((end_value / start_value) ** (1 / years) - 1) * 100
+        if isinstance(result, complex):
+            return None
+        return round(result, 2)
+    except Exception:
+        return None
+
+# def insert_performance_metrics(all_sections, conn, company_id):
+#     annual_df = all_sections.get("Profit & Loss")
+#     bs_df = all_sections.get("Balance Sheet")
+#     if annual_df is None or bs_df is None:
+#         return
+
+#     # Build period_id lookup
+#     period_ids = []
+#     for _, row in annual_df.iterrows():
+#         year = row['year']
+#         period = conn.execute(
+#             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'",
+#             (year,)
+#         ).fetchone()
+#         if period:
+#             period_ids.append((year, period[0]))
+
+#     # Sort by year for CAGR
+#     period_ids = sorted(period_ids, key=lambda x: x[0])
+#     annual_map = {row['year']: row for _, row in annual_df.iterrows()}
+#     bs_map = {row['year']: row for _, row in bs_df.iterrows()}
+#     # annual_results: list of dicts, each with 'period_id', 'sales', 'net_profit', 'equity'
+#     years = 5
+#     if len(period_ids) >= years + 1:
+#         start_year, _ = period_ids[-(years+1)]
+#         end_year, end_period_id = period_ids[-1]
+#         start = annual_map[start_year]
+#         end = annual_map[end_year]
+#         cagr_sales = calculate_cagr(safe_val(start.get('Sales')), safe_val(end.get('Sales')), years)
+#         cagr_profit = calculate_cagr(safe_val(start.get('Net profit')), safe_val(end.get('Net profit')), years)
+#         conn.execute("""
+#             INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+#             VALUES (%s, %s, %s, %s, %s)
+#             ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+#         """, (company_id, end_period_id, 'compounded_sales_growth', f'{years}_years', f"{cagr_sales}%"))
+#         conn.execute("""
+#             INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+#             VALUES (%s, %s, %s, %s, %s)
+#             ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+#         """, (company_id, end_period_id, 'compounded_profit_growth', f'{years}_years', f"{cagr_profit}%"))
+
+#     # ROE for last year
+#     if period_ids:
+#         last_year, last_period_id = period_ids[-1]
+#         last = annual_map[last_year]
+#         last_bs = bs_map.get(last_year, {})
+#         equity = safe_val(last_bs.get('Equity Share Capital'))
+#         reserves = safe_val(last_bs.get('Reserves'))
+#         net_profit = safe_val(last.get('Net profit'))
+#         denominator = (equity or 0) + (reserves or 0)
+#         if denominator and net_profit:
+#             roe = round((net_profit / denominator) * 100, 2)
+#             conn.execute("""
+#                 INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+#                 VALUES (%s, %s, %s, %s, %s)
+#                 ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+#             """, (company_id, last_period_id, 'roe', 'last_year', f"{roe}%"))
 
 def insert_performance_metrics(all_sections, conn, company_id):
     annual_df = all_sections.get("Profit & Loss")
     bs_df = all_sections.get("Balance Sheet")
+    price_df = all_sections.get("Price")  # Assuming you have a price data section
     if annual_df is None or bs_df is None:
         return
 
@@ -301,10 +530,16 @@ def insert_performance_metrics(all_sections, conn, company_id):
     period_ids = []
     for _, row in annual_df.iterrows():
         year = row['year']
-        period = conn.execute(
+        try:
+            pd.to_datetime(year)  # Ensure year is a valid date
+        except Exception:
+            print(f"Skipping invalid year: {year}")
+            continue
+        conn.execute(
             "SELECT period_id FROM financial_periods WHERE period_date = %s AND period_type = 'annual'",
             (year,)
-        ).fetchone()
+        )
+        period=conn.fetchone()
         if period:
             period_ids.append((year, period[0]))
 
@@ -312,35 +547,66 @@ def insert_performance_metrics(all_sections, conn, company_id):
     period_ids = sorted(period_ids, key=lambda x: x[0])
     annual_map = {row['year']: row for _, row in annual_df.iterrows()}
     bs_map = {row['year']: row for _, row in bs_df.iterrows()}
-    # annual_results: list of dicts, each with 'period_id', 'sales', 'net_profit', 'equity'
-    years = 5
-    if len(period_ids) >= years + 1:
-        start_year, _ = period_ids[-(years+1)]
-        end_year, end_period_id = period_ids[-1]
-        start = annual_map[start_year]
-        end = annual_map[end_year]
-        cagr_sales = calculate_cagr(safe_val(start.get('Sales')), safe_val(end.get('Sales')), years)
-        cagr_profit = calculate_cagr(safe_val(start.get('Net profit')), safe_val(end.get('Net profit')), years)
-        conn.execute("""
-            INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
-        """, (company_id, end_period_id, 'compounded_sales_growth', f'{years}_years', f"{cagr_sales}%"))
-        conn.execute("""
-            INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
-        """, (company_id, end_period_id, 'compounded_profit_growth', f'{years}_years', f"{cagr_profit}%"))
+    price_map = {row['year']: row for _, row in price_df.iterrows()}
 
-    # ROE for last year
+    # CAGR for multiple durations
+    for years in [10, 7, 5, 3]:
+        if len(period_ids) >= years + 1:
+            start_year, _ = period_ids[-(years+1)]
+            end_year, end_period_id = period_ids[-1]
+            start = annual_map[start_year]
+            end = annual_map[end_year]
+            cagr_sales = calculate_cagr(safe_val(start.get('Sales')), safe_val(end.get('Sales')), years)
+            cagr_profit = calculate_cagr(safe_val(start.get('Net profit')), safe_val(end.get('Net profit')), years)
+            conn.execute("""
+                INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+            """, (company_id, end_period_id, 'compounded_sales_growth', f'{years}_years', f"{cagr_sales}%"))
+            conn.execute("""
+                INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+            """, (company_id, end_period_id, 'compounded_profit_growth', f'{years}_years', f"{cagr_profit}%"))
+
+    # OPM and P/E for last year
     if period_ids:
         last_year, last_period_id = period_ids[-1]
         last = annual_map[last_year]
         last_bs = bs_map.get(last_year, {})
-        equity = safe_val(last_bs.get('Equity Share Capital'))
+        last_price_row = price_map.get(last_year, last)
+        
+
+        # OPM (Operating Profit Margin)
+        sales = safe_val(last.get('Sales'))
+        operating_profit = safe_val(last.get('Operating Profit'))
+        opm = (operating_profit / sales) * 100 if operating_profit and sales else None
+        if opm is not None:
+            conn.execute("""
+                INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+            """, (company_id, last_period_id, 'opm', 'last_year', f"{opm}%"))
+
+        # Price to Earnings (P/E)
+        # You must provide price data for this period, e.g., from another table or all_sections
+        price = safe_val(last_price_row.get('Price'))  # Replace with your actual price source
+        equity_shares = safe_val(last_bs.get('Equity Share Capital'))
         net_profit = safe_val(last.get('Net profit'))
-        if equity and net_profit:
-            roe = round((net_profit / equity) * 100, 2)
+        eps = (net_profit / equity_shares) if net_profit and equity_shares else None
+        pe = round((price / eps), 2) if price and eps else None
+        if pe is not None:
+            conn.execute("""
+                INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (company_id, period_id, metric_type, period_duration) DO NOTHING
+            """, (company_id, last_period_id, 'price_to_earning', 'last_year', f"{pe}"))
+
+        # ROE for last year
+        reserves = safe_val(last_bs.get('Reserves'))
+        denominator = (equity_shares or 0) + (reserves or 0)
+        if denominator and net_profit:
+            roe = round((net_profit / denominator) * 100, 2)
             conn.execute("""
                 INSERT INTO performance_metrics (company_id, period_id, metric_type, period_duration, value_percentage)
                 VALUES (%s, %s, %s, %s, %s)
