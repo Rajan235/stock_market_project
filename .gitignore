@@ -30,10 +30,10 @@ env/
 Thumbs.db
 
 # Database dumps/backups
-*.sqlite3
-*.db
-*.bak
-*.sql
+#*.sqlite3
+#*.db
+#*.bak
+#*.sql
 
 # Secrets
 config.py
