@@ -199,6 +199,7 @@ def insert_balance_sheet(all_sections, cur, company_id):
 
 # ----------------- Quarterly Results -----------------
 def insert_quarterly_results(all_sections, conn, company_id):
+    print("Inserting quarterly results...")
     q_df = all_sections.get("Quarterly")
     if q_df is None:
         return
@@ -232,6 +233,8 @@ def insert_quarterly_results(all_sections, conn, company_id):
         tax_percentage = (tax / pbt) * 100 if tax and pbt else None
 
         #eps=need to be calculated 
+        print(f"Inserting quarterly_results for year {year}:")
+        print(f"  sales={safe_val(sales)}, expenses={safe_val(expenses)}, operating_profit={safe_val(op)}, opm_percentage={opm_percentage}")
 
         conn.execute("""
             INSERT INTO quarterly_results (

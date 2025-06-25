@@ -45,6 +45,7 @@ for company in companies:
     all_sections = parse_financial_excel(file_path)
     #print(all_sections)
 
+    # to insert screener data in db
     insert_annual_results(all_sections, cur, company_id)
     insert_balance_sheet(all_sections, cur, company_id)
     insert_cash_flow(all_sections, cur, company_id)
@@ -53,8 +54,70 @@ for company in companies:
     insert_performance_metrics(all_sections, cur, company_id)
     conn.commit()
 
+    # to back fill events table
+    # Example usage for quarterly_results
+    # backfill_events_for_table(
+    #     table_name='quarterly_results',
+    #     event_type_name='quarterly_results_announced',
+    #     metrics=[
+    #         "sales", "net_profit", "eps_rs", "operating_profit", "expenses", "other_income",
+    #         "interest", "depreciation", "profit_before_tax", "tax", "tax_percentage", "opm_percentage"
+    #     ],
+    #     period_type='quarterly'
+    # )
+
+    # # Example usage for annual_results
+    # backfill_events_for_table(
+    #     table_name='annual_results',
+    #     event_type_name='annual_results_announced',
+    #     metrics=[
+    #         "sales", "net_profit", "eps_rs", "operating_profit", "expenses", "other_income",
+    #         "interest", "depreciation", "profit_before_tax", "tax", "tax_percentage", "opm_percentage",
+    #         "dividend_payout_percentage", "dividend_amount"
+    #     ],
+    #     period_type='annual'
+    # )
+    # backfill_events_for_table(
+    #     table_name='balance_sheet',
+    #     event_type_name='balance_sheet_announced',
+    #     metrics=[
+    #         "equity_capital", "reserves", "borrowings", "other_liabilities", "total_liabilities",
+    #         "fixed_assets", "cwip", "investments", "other_assets", "total_assets"
+    #     ],
+    #     period_type='annual'  # or 'quarterly' if you have quarterly balance sheets
+    # )
+    # backfill_events_for_table(
+    #     table_name='cash_flow',
+    #     event_type_name='cash_flow_announced',
+    #     metrics=[
+    #         "cash_from_operating_activity", "cash_from_investing_activity",
+    #         "cash_from_financing_activity", "net_cash_flow"
+    #     ],
+    #     period_type='annual'  # or 'quarterly' if you have quarterly cash flows
+    # )
+
+    # backfill_events_for_table(
+    #     table_name='financial_ratios',
+    #     event_type_name='financial_ratios_announced',
+    #     metrics=[
+    #         "debtor_days", "inventory_days", "days_payable", "cash_conversion_cycle",
+    #         "working_capital_days", "roce_percentage"
+    #     ],
+    #     period_type='annual'  # or 'quarterly' if you have quarterly ratios
+    # )
+
+    # backfill_events_for_table(
+    #     table_name='performance_metrics',
+    #     event_type_name='performance_metrics_announced',
+    #     metrics=[
+    #         "metric_type", "period_duration", "value_percentage"
+    #     ],
+    #     period_type='annual'  # or as appropriate for your data
+    # )
+
 cur.close()
 conn.close()
+print("Data processing completed successfully.")
 
 
 

@@ -1,6 +1,3 @@
-
-
- 
 -- Companies table to store company information
 CREATE TABLE companies (
     company_id SERIAL PRIMARY KEY,
@@ -413,24 +410,52 @@ CREATE TABLE IF NOT EXISTS public.companies
 COMMENT ON TABLE public.companies
     IS 'Master table for company information';
 
-CREATE TABLE IF NOT EXISTS public.event_type
-(
-    id serial NOT NULL,
-    name character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    CONSTRAINT event_type_pkey PRIMARY KEY (id),
-    CONSTRAINT event_type_name_key UNIQUE (name)
+-- CREATE TABLE IF NOT EXISTS public.event_type
+-- (
+--     id serial NOT NULL,
+--     name character varying(50) COLLATE pg_catalog."default" NOT NULL,
+--     CONSTRAINT event_type_pkey PRIMARY KEY (id),
+--     CONSTRAINT event_type_name_key UNIQUE (name)
+-- );
+
+CREATE TABLE IF NOT EXISTS public.event_type (
+    id serial PRIMARY KEY,
+    name varchar(50) UNIQUE NOT NULL,          -- e.g., 'quarterly_results_announced'
+    description text,                          -- e.g., 'Quarterly earnings released'
+    category varchar(50),                      -- e.g., 'fundamental', 'technical', etc.
+    expression text,                           -- Optional logic (e.g., 'revenue_growth > 15')
+    active boolean DEFAULT true                -- For enabling/disabling event types
 );
 
-CREATE TABLE IF NOT EXISTS public.financial_events
-(
-    id serial NOT NULL,
-    company_id integer,
-    event_type_id integer,
-    event_timestamp timestamp without time zone NOT NULL,
-    details jsonb NOT NULL,
-    CONSTRAINT financial_events_pkey PRIMARY KEY (id),
-    CONSTRAINT financial_events_company_id_event_type_id_event_timestamp_key UNIQUE (company_id, event_type_id, event_timestamp)
+CREATE TABLE IF NOT EXISTS public.financial_events (
+    id serial PRIMARY KEY,
+
+    company_id integer NOT NULL,              -- FK to your company table
+    event_type_id integer NOT NULL REFERENCES event_type(id), -- Type of event
+    event_timestamp timestamp NOT NULL,       -- When this event happened
+
+    main_metric varchar(50) NOT NULL,         -- e.g., 'revenue', 'eps', 'net_profit'
+    previous_value numeric,                   -- e.g., revenue in previous Q4
+    current_value numeric,                    -- e.g., revenue in current Q4
+    variance numeric,                         -- current - previous
+
+    details jsonb NOT NULL,                   -- Full snapshot (all metrics, metadata)
+
+    CONSTRAINT unique_event_per_metric UNIQUE (
+        company_id, event_type_id, event_timestamp, main_metric
+    )
 );
+
+-- CREATE TABLE IF NOT EXISTS public.financial_events
+-- (
+--     id serial NOT NULL,
+--     company_id integer,
+--     event_type_id integer,
+--     event_timestamp timestamp without time zone NOT NULL,
+--     details jsonb NOT NULL,
+--     CONSTRAINT financial_events_pkey PRIMARY KEY (id),
+--     CONSTRAINT financial_events_company_id_event_type_id_event_timestamp_key UNIQUE (company_id, event_type_id, event_timestamp)
+-- );
 
 CREATE TABLE IF NOT EXISTS public.financial_periods
 (
@@ -915,3 +940,8 @@ CREATE TABLE IF NOT EXISTS yfinance_cash_flow (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (company_id, period_id, period_type)
 );
+
+INSERT INTO event_type (name, description, category)
+VALUES 
+  ('quarterly_results_announced', 'Quarterly financials declared', 'fundamental'),
+  ('annual_results_announced', 'Annual financials declared', 'fundamental');
