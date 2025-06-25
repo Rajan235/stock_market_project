@@ -9,21 +9,40 @@ This project helps you build and populate a financial database using data from S
 **Before running any scripts, make sure you have inserted the required periods and event types:**
 
 ```sql
--- Annual periods
 INSERT INTO financial_periods (period_name, period_type, period_date, financial_year, quarter_number, calendar_year) VALUES
+-- Annual periods
 ('Mar 2014', 'annual', '2014-03-31', 'FY2014', NULL, 2014),
-...
+('Mar 2015', 'annual', '2015-03-31', 'FY2015', NULL, 2015),
+('Mar 2016', 'annual', '2016-03-31', 'FY2016', NULL, 2016),
+('Mar 2017', 'annual', '2017-03-31', 'FY2017', NULL, 2017),
+('Mar 2018', 'annual', '2018-03-31', 'FY2018', NULL, 2018),
+('Mar 2019', 'annual', '2019-03-31', 'FY2019', NULL, 2019),
+('Mar 2020', 'annual', '2020-03-31', 'FY2020', NULL, 2020),
+('Mar 2021', 'annual', '2021-03-31', 'FY2021', NULL, 2021),
+('Mar 2022', 'annual', '2022-03-31', 'FY2022', NULL, 2022),
+('Mar 2023', 'annual', '2023-03-31', 'FY2023', NULL, 2023),
+('Mar 2024', 'annual', '2024-03-31', 'FY2024', NULL, 2024),
 ('Mar 2025', 'annual', '2025-03-31', 'FY2025', NULL, 2025),
 
 -- Quarterly periods
 ('Mar 2022', 'quarterly', '2022-03-31', 'FY2022', 4, 2022),
-...
+('Jun 2022', 'quarterly', '2022-06-30', 'FY2023', 1, 2022),
+('Sep 2022', 'quarterly', '2022-09-30', 'FY2023', 2, 2022),
+('Dec 2022', 'quarterly', '2022-12-31', 'FY2023', 3, 2022),
+('Mar 2023', 'quarterly', '2023-03-31', 'FY2023', 4, 2023),
+('Jun 2023', 'quarterly', '2023-06-30', 'FY2024', 1, 2023),
+('Sep 2023', 'quarterly', '2023-09-30', 'FY2024', 2, 2023),
+('Dec 2023', 'quarterly', '2023-12-31', 'FY2024', 3, 2023),
+('Mar 2024', 'quarterly', '2024-03-31', 'FY2024', 4, 2024),
+('Jun 2024', 'quarterly', '2024-06-30', 'FY2025', 1, 2024),
+('Sep 2024', 'quarterly', '2024-09-30', 'FY2025', 2, 2024),
+('Dec 2024', 'quarterly', '2024-12-31', 'FY2025', 3, 2024),
 ('Mar 2025', 'quarterly', '2025-03-31', 'FY2025', 4, 2025);
 
--- TTM period (latest)
 INSERT INTO financial_periods (period_name, period_type, period_date, financial_year, quarter_number, calendar_year)
 VALUES ('Mar 2025', 'ttm', '2025-03-31', 'FY2025', NULL, 2025)
 ON CONFLICT (period_name, period_type) DO NOTHING;
+
 
 -- Event types
 INSERT INTO event_type (name, description, category)
